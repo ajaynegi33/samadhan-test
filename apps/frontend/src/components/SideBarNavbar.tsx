@@ -1,0 +1,265 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
+import { useAuthStore } from "@/store/useAuthStore";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import FAB5Logo from "@/assets/FAB5-logo.webp";
+interface SidebarContentProps {
+  collapsed: boolean;
+  mobile: boolean;
+  navItems: { label: string; icon: string; href: string }[];
+  pathname: string;
+  isMobileOpen: boolean;
+  setIsMobileOpen: (open: boolean) => void;
+  user: any;
+  handleLogout: () => void;
+}
+
+const SidebarContent = ({ collapsed, mobile, navItems, pathname, setIsMobileOpen, user, handleLogout }: SidebarContentProps) => (
+  <div className={`flex h-full flex-col ${mobile ? "p-6" : "p-4 md:p-6 lg:p-3"}`}>
+    {/* Logo */}
+    <div className="flex flex-col items-center gap-0 overflow-hidden ">
+      <Image
+        src={FAB5Logo}
+        alt="Samadhan-Logo"
+        width={100}
+        height={100}
+        className={` ${collapsed && !mobile ? "mt-5 mb-5" : "mt-10 mb-10"} transition-all duration-300`}
+      />
+      {/* <h2
+        className={`${
+          collapsed && !mobile ? "opacity-0 invisible w-0" : "opacity-100 visible w-auto"
+        } transition-all duration-300 text-slate-900 text-2xl font-bold tracking-tight pt-1`}
+      >
+        Samadhan
+      </h2> */}
+
+      {mobile && (
+        <button
+          onClick={() => setIsMobileOpen(false)}
+          className="ml-auto md:hidden text-slate-400 hover:text-slate-600"
+        >
+          <span className="material-symbols-outlined">close</span>
+        </button>
+      )}
+    </div>
+
+    {/* Navigation */}
+    <nav className="flex flex-1 flex-col gap-2">
+      {navItems.map((item) => {
+        const isActive = pathname === item.href;
+        return (
+          <Link
+            key={item.label}
+            href={item.href}
+            className={`group flex items-center gap-2 rounded-lg px-3 py-3 transition-colors ${isActive ? "bg-indigo-50" : "hover:bg-slate-50"
+              }`}
+          >
+            <div
+              className={`transition-colors shrink-0 ${isActive ? "text-[#2513ec]" : "text-slate-500 group-hover:text-[#2513ec]"
+                } flex items-center`}
+            >
+              <span className={`material-symbols-outlined block ${isActive ? "icon-active" : ""}`}>
+                {item.icon}
+              </span>
+            </div>
+            <p
+              className={`${collapsed && !mobile ? "opacity-0 invisible w-0" : "opacity-100 visible w-auto"
+                } text-sm leading-normal transition-all duration-300 whitespace-nowrap ${isActive ? "font-semibold text-[#2513ec]" : "font-medium text-slate-500 group-hover:text-slate-900"
+                }`}
+            >
+              {item.label}
+            </p>
+          </Link>
+        );
+      })}
+    </nav>
+
+    {/* Profile Info & Logout */}
+    <div className="mt-auto flex flex-col gap-3 border-t border-slate-100 pt-6 overflow-hidden">
+      <Link
+        href="/profile"
+        className="group flex w-full items-center gap-3 rounded-lg px-1 py-3 transition-colors hover:bg-slate-50"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 overflow-hidden">
+          {user?.profile_image ? (
+            <Image src={user.profile_image} alt="Profile" width={50} height={50} className="object-cover" />
+          ) : (
+            <span className="material-symbols-outlined">person</span>
+          )}
+        </div>
+        <div
+          className={`${collapsed && !mobile ? "opacity-0 invisible w-0" : "opacity-100 visible w-auto"
+            } flex flex-col min-w-0 transition-all duration-300`}
+        >
+          <span className="text-sm font-semibold text-slate-900 truncate">{user?.name}</span>
+          <span className="text-xs font-medium text-slate-500 truncate uppercase">
+            {user?.role === "USER" ? "Customer" : user?.role.replace("_", " ")}
+          </span>
+        </div>
+      </Link>
+
+      <button
+        onClick={handleLogout}
+        className="group flex w-full items-center gap-3 rounded-lg px-3 py-3 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
+      >
+        <span className="material-symbols-outlined shrink-0">logout</span>
+        <span
+          className={`${collapsed && !mobile ? "opacity-0 invisible w-0" : "opacity-100 visible w-auto"
+            } text-sm font-medium transition-all duration-300`}
+        >
+          Sign Out
+        </span>
+      </button>
+    </div>
+  </div>
+);
+
+const SidebarNavbar = () => {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, clearAuth } = useAuthStore();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Close mobile menu when path changes
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await api.post("/logout");
+    } catch (err) {
+      // Ignore
+    } finally {
+      clearAuth();
+      toast.success("Logged out successfully");
+      router.push("/");
+    }
+  };
+
+  type NavItem = {
+    label: string;
+    icon: string;
+    href: string;
+  };
+
+  const customerItems: NavItem[] = [
+    { label: "Dashboard", icon: "home", href: "/customer" },
+    { label: "Raise Ticket", icon: "report", href: "/customer/raise-new-ticket" },
+    { label: "My Tickets", icon: "confirmation_number", href: "/customer/tickets" },
+    { label: "My connection", icon: "cable", href: "/customer/my-connections" },
+    { label: "Drishti", icon: "analytics", href: "/customer/drishti" },
+    { label: "Guidelines", icon: "policy", href: "/customer/support-guidelines" },
+    { label: "Profile", icon: "person", href: "/profile" },
+  ];
+
+  const employeeItems: NavItem[] = [
+    { label: "Dashboard", icon: "dashboard", href: "/employee/support-agent" },
+    { label: "All Tickets", icon: "list_alt", href: "/employee/support-agent/tickets" },
+    { label: "Profile", icon: "person", href: "/profile" },
+  ];
+
+  const employeeAdminItems: NavItem[] = [
+    { label: "Dashboard", icon: "dashboard", href: "/employee/admin" },
+    { label: "All Tickets", icon: "list_alt", href: "/employee/admin/tickets" },
+    { label: "Staff", icon: "badge", href: "/employee/admin/staff" },
+    { label: "Customers", icon: "groups", href: "/employee/admin/customers" },
+    { label: "Connections", icon: "cable", href: "/employee/admin/connections" },
+    { label: "Resolution Log", icon: "history_edu", href: "/employee/admin/reports/resolved" },
+    { label: "Profile", icon: "person", href: "/profile" },
+  ];
+
+  const salesItems: NavItem[] = [
+    { label: "Dashboard", icon: "dashboard", href: "/employee/sales" },
+    { label: "Raise Ticket", icon: "add_circle", href: "/employee/sales/raise-ticket" },
+    { label: "All Tickets", icon: "list_alt", href: "/employee/sales/tickets" },
+    { label: "Profile", icon: "person", href: "/profile" },
+  ];
+
+  const roleNavMap: Record<string, NavItem[]> = {
+    USER: customerItems,
+    SUPPORT_AGENT: employeeItems,
+    MANAGER: employeeItems,
+    ADMIN: employeeAdminItems,
+    SALES: salesItems,
+  };
+
+  const navItems = user?.role && roleNavMap[user.role] ? roleNavMap[user.role] : customerItems;
+
+  return (
+    <>
+      {/* Mobile Hamburger Button */}
+      <div className="md:hidden fixed top-4 left-4 z-40">
+        <button
+          onClick={() => setIsMobileOpen(true)}
+          className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 shadow-sm"
+        >
+          <span className="material-symbols-outlined">menu</span>
+        </button>
+      </div>
+
+      {/* Mobile Sidebar (Drawer) */}
+      <div className={`md:hidden fixed inset-0 z-50 transition-visibility duration-300 ${isMobileOpen ? "visible" : "invisible" }`} >
+        {/* Backdrop */}
+        <div
+          className={`absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 ${isMobileOpen ? "opacity-100" : "opacity-0"
+            }`}
+          onClick={() => setIsMobileOpen(false)}
+        />
+        {/* Panel */}
+        <aside
+          className={`absolute top-0 left-0 h-full w-[280px] bg-white transition-transform duration-300 ease-in-out transform ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+        >
+          <SidebarContent
+            mobile={true}
+            collapsed={false}
+            navItems={navItems}
+            pathname={pathname}
+            isMobileOpen={isMobileOpen}
+            setIsMobileOpen={setIsMobileOpen}
+            user={user}
+            handleLogout={handleLogout}
+          />
+        </aside>
+      </div>
+
+      {/* Desktop Sidebar (Persistent) */}
+      <aside
+        className={`hidden md:flex ${isCollapsed ? "w-[73px]" : "w-[200px]"
+          } shrink-0 flex-col border-r border-slate-200 bg-white h-screen sticky top-0 transition-all duration-300 ease-in-out relative z-40`}
+      >
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute -right-4 top-25 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-transform hover:text-[#2513ec] z-10"
+        >
+          <span
+            className={`material-symbols-outlined text-sm transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""
+              }`}
+          >
+            chevron_left
+          </span>
+        </button>
+        <SidebarContent
+          mobile={false}
+          collapsed={isCollapsed}
+          navItems={navItems}
+          pathname={pathname}
+          isMobileOpen={isMobileOpen}
+          setIsMobileOpen={setIsMobileOpen}
+          user={user}
+          handleLogout={handleLogout}
+        />
+      </aside>
+    </>
+  );
+};
+
+export default SidebarNavbar;
